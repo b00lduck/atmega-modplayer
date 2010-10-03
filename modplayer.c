@@ -79,10 +79,13 @@ void next_row() {
  */
 void process_row() {
 	uint8_t ch = 0;
+
+	uint32_t pre_offset = OFFSET_PATTERNS + (patterntable[songpos] << 10) + (activerow << 4);
+
 	for (ch=0;ch<4;ch++) {
 
 		// Decode one division
-		uint32_t offset = OFFSET_PATTERNS + patterntable[songpos] * 1024 + activerow * 16 + ch * 4; // TODO: shift!
+		uint32_t offset = pre_offset + (ch << 2);
 
 		uint8_t byte3 = pgm_read_byte(&moduledata[offset+2]);
 		uint8_t sample_id = (byte3 >> 4);
@@ -107,6 +110,7 @@ void process_row() {
 				break;
 		
 		}
+		
 		
 	}	
 

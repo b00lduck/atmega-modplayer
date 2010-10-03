@@ -3,7 +3,7 @@
 #define CBI(port,bit) port &= ~(1<<bit)
 #define NOP asm volatile ("nop");
 
-#define SAMPLERATE 10000
+#define SAMPLERATE 8000
 
 #define REFERENCE_RATE 8287
 

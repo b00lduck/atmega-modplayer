@@ -39,7 +39,7 @@ uint16_t samples_until_next_frame = SAMPLES_PER_FRAME;
  */
 ISR (TIMER1_OVF_vect) {	
 	TCNT1 = 65535 - (SYSCLK / 8 / SAMPLERATE);	
-	OCR0 = paula_render() + 128;
+	OCR0 = paula_render() + 127;
 
 	if (samples_until_next_frame > 0) {
 		samples_until_next_frame--;
