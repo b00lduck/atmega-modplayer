@@ -10,7 +10,6 @@
 // FIXED POINT ARITHMETICS
 
 #define FPACBITS 16
-#define FPA_FRACMASK 0xffff
 
 //#define FPA_TO_NORM(a) (a >> FPACBITS)
 //#define NORM_TO_FPA(a) ((uint32_t)(((uint32_t)a) << FPACBITS))

@@ -19,10 +19,10 @@ int main (void) {
 	TCCR0 |= (1<<WGM01|1<<WGM00|1<<COM01|1<<CS00);
 	OCR0 = 128;
 	
-	//Set TIMER1 (Samples)
-	TIMSK |= (1 << TOIE1);
-	TCCR1B = (1<<CS11);
-	TCNT1 = 65535 - (SYSCLK / 8 / SAMPLERATE);			
+	//Set TIMER2 (Samples)
+	TIMSK |= (1 << TOIE2);
+	TCCR2 = (1<<CS11);
+	TCNT2 = 255 - (SYSCLK / 8 / SAMPLERATE);			
 
 	sei();
 	
@@ -37,9 +37,9 @@ uint16_t samples_until_next_frame = SAMPLES_PER_FRAME;
 /**
  *
  */
-ISR (TIMER1_OVF_vect) {	
-	TCNT1 = 65535 - (SYSCLK / 8 / SAMPLERATE);	
-	OCR0 = paula_render() + 127;
+ISR (TIMER2_OVF_vect) {	
+	TCNT2 = 255 - (SYSCLK / 8 / SAMPLERATE);	
+	OCR0 = paula_render() + 128;
 
 	if (samples_until_next_frame > 0) {
 		samples_until_next_frame--;

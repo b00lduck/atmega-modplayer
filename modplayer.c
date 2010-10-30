@@ -16,25 +16,21 @@ uint8_t songpos = 0;
 uint8_t activerow = 0;
 uint8_t activeframe = 0;
 
-
-
 struct structChannelstate {
 	uint8_t sample_id;
-	uint32_t rate_before_fx;
+	uint16_t rate_before_fx;
 	uint8_t arp[3];
 } channelstate[4];
 
 struct structSampleHeader {
-
-	uint16_t length;
+	uint32_t length;
 	int8_t finetune;
 	uint8_t volume;
 	uint8_t loop;
-	uint16_t loop_start;
-	uint16_t loop_length;
-	uint16_t loop_end;
+	uint32_t loop_start;
+	uint32_t loop_length;
+	uint32_t loop_end;
 	uint16_t data_offset;
-
 } sampleHeader[31];
 
 
@@ -46,11 +42,12 @@ void trigger(uint8_t ch, uint8_t sample_id, uint16_t rate) {
 
 	paula_channel[ch].addr = offset_samples + sampleHeader[sample_id].data_offset;
 	paula_channel[ch].FP16_length = ((uint32_t)sampleHeader[sample_id].length) << FPACBITS;
-	paula_channel[ch].rate = rate;
+	paula_channel[ch].FP16_finalrate = FP16_ratefactor / rate;
 	paula_channel[ch].volume = 64;
 
 	paula_channel[ch].FP16_loop_start = ((uint32_t)sampleHeader[sample_id].loop_start) << FPACBITS;
 	paula_channel[ch].FP16_loop_end = ((uint32_t)sampleHeader[sample_id].loop_end) << FPACBITS;
+	paula_channel[ch].FP16_loop_length = paula_channel[ch].FP16_loop_end - paula_channel[ch].FP16_loop_start;
 	paula_channel[ch].loop_enable = sampleHeader[sample_id].loop;
 
 	paula_channel[ch].FP16_position = 0;
@@ -85,16 +82,19 @@ void process_row() {
 	for (ch=0;ch<4;ch++) {
 
 		// Decode one division
-		uint32_t offset = pre_offset + (ch << 2);
+		uint32_t offset = pre_offset + (ch * 4);
 
+		uint8_t byte1 = pgm_read_byte(&moduledata[offset]);
+		uint8_t byte2 = pgm_read_byte(&moduledata[offset+1]);
 		uint8_t byte3 = pgm_read_byte(&moduledata[offset+2]);
-		uint8_t sample_id = (byte3 >> 4);
-		uint16_t rate = (pgm_read_byte(&moduledata[offset]) << 8) + (pgm_read_byte(&moduledata[offset+1]));
-		uint8_t effectdata = pgm_read_byte(&moduledata[offset+3]);
+		uint8_t byte4 = pgm_read_byte(&moduledata[offset+3]);
+		uint16_t rate = ((byte1 & 0x0f) << 8) + byte2;
+		uint8_t sample_id = (byte1 & 0xf0) + (byte3 >> 4);
+		uint8_t effectdata = byte4;
 		uint8_t effectid = byte3 & 0x0f;	
 
 		if (sample_id > 0) {
-			trigger(ch,sample_id - 1,rate);
+			trigger(ch,sample_id - 1,rate & 0x0fff);
 		}
 
 		switch(effectid) {
@@ -102,10 +102,15 @@ void process_row() {
 			case 0:
 				channelstate[ch].arp[0] = 0;
 				channelstate[ch].arp[1] = effectdata >> 4;
-				channelstate[ch].arp[2] = effectdata & 0xf;				
+				channelstate[ch].arp[2] = effectdata & 0xf;								
 				break;
 
-			case 15:
+			case 0xc:
+				sampleHeader[sample_id].volume = effectdata;
+				paula_channel[ch].volume = effectdata;
+				break;
+
+			case 0xf:
 				speed = effectdata & 0xf;
 				break;
 		
@@ -134,18 +139,17 @@ uint16_t FParptable[16] = {256,271,287,304,322,342,362,383,406,430,456,483,512,5
  */
 void process_frame() {
 
-	//uint8_t arpindex = activeframe % 3;
+	uint8_t arpindex = activeframe % 3;
 
 	uint8_t ch;
 	for (ch=0;ch<4;ch++) {
 
-		//uint8_t arptable_index = channelstate[ch].arp[arpindex];
-
-		//uint32_t tmp = (channelstate[ch].rate_before_fx) * FParptable[arptable_index];	
-	
-		//if (channelstate[ch].playing) {			
-		//	channelstate[ch].FPrate = (FPratefactor / tmp) << 8;
-		//}
+		if (paula_channel[ch].playing) {	
+			uint8_t arptable_index = channelstate[ch].arp[arpindex];
+			uint32_t arped_rate = (uint32_t)channelstate[ch].rate_before_fx << 8;	
+			paula_channel[ch].FP16_finalrate = FP16_ratefactor / channelstate[ch].rate_before_fx;			
+			 
+		}
 	
 	}
 
@@ -200,7 +204,6 @@ void copy_sampleinfo() {
 		sampleHeader[c].loop_length = (uint8_t)pgm_read_byte(&moduledata[offset + 28]) << 9;
 		sampleHeader[c].loop_length = (uint8_t)pgm_read_byte(&moduledata[offset + 29]) << 1;
 		sampleHeader[c].loop = (sampleHeader[c].loop_length > 2);
-
 
 		sampleHeader[c].loop_end = sampleHeader[c].loop_start + sampleHeader[c].loop_length;
 

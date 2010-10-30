@@ -12,7 +12,6 @@ void init_paula() {
 	FP16_ratefactor = a * 428;
 
 }
-
 int8_t paula_render() {
 
 	int16_t sum = 0;
@@ -26,31 +25,18 @@ int8_t paula_render() {
 			// LOOP
 			if (paula_channel[ch].loop_enable) {			
 				if (paula_channel[ch].FP16_position > paula_channel[ch].FP16_loop_end) {
-					paula_channel[ch].FP16_position = paula_channel[ch].FP16_loop_start;
+					paula_channel[ch].FP16_position -= (paula_channel[ch].FP16_loop_length);
 				}
 			} 
 
 			// PLAY
 			if (paula_channel[ch].FP16_position < paula_channel[ch].FP16_length) {								
 	
-				/*
-				uint16_t current_position = (channelstate[ch].FPsamplepos >> FPACBITS);		
-								
-				// linear interpolation 8:8 fixedpoint
-				uint8_t fraction = (channelstate[ch].FPsamplepos & FPA_FRACMASK) >> 8;
-				int16_t a = GET_SBYTE(channelstate[ch].sample_id, current_position);
-				int16_t b = GET_SBYTE(channelstate[ch].sample_id, current_position + 1);
+				int8_t tmp = (int8_t)pgm_read_byte(&moduledata[paula_channel[ch].addr + (paula_channel[ch].FP16_position >> FPACBITS)]);
 
-				int8_t tmp = (a * (255-fraction) + (b * fraction));
-				
-				sum += tmp;
+				sum += (tmp * paula_channel[ch].volume) / 128;
 
-				channelstate[ch].FPsamplepos += channelstate[ch].FPrate;
-				*/
-
-				sum += (int8_t)pgm_read_byte(&moduledata[paula_channel[ch].addr + (paula_channel[ch].FP16_position >> FPACBITS)]);				
-
-				paula_channel[ch].FP16_position += FP16_ratefactor / paula_channel[ch].rate;
+				paula_channel[ch].FP16_position += paula_channel[ch].FP16_finalrate;
 
 			} else {
 
@@ -63,5 +49,5 @@ int8_t paula_render() {
 	}	
 	
 
-	return (sum / 4);
+	return (sum / 5);
 }
