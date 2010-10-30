@@ -2,51 +2,44 @@
 #include <avr/io.h>
 
 #include "global.h"
-
 #include "modplayer.h"
+#include "moduledata.h"
 #include "paula_emu.h"
-
-extern 
 
 
 int main (void) {
 
-	init_modplayer();
-	init_paula();
 
 	//Set TIMER0 (PWM OC0 Pin)
 	DDRB |= (1<<3);
 	TCCR0 |= (1<<WGM01|1<<WGM00|1<<COM01|1<<CS00);
 	OCR0 = 128;
-	
-	//Set TIMER2 (Samples)
-	TIMSK |= (1 << TOIE2);
-	TCCR2 = (1<<CS11);
-	TCNT2 = 255 - (SYSCLK / 8 / SAMPLERATE);			
+
+	//Set TIMER1 (Next Sample Timer)	
+	TIMSK |= (1 << OCIE1A);
+	TCCR1B |= (1<<WGM12) | (1<<CS11);
+		
+	//Set TIMER2 (Frames)
+	TIMSK |= (1 << OCIE2);
+	TCCR2 = (1<<WGM21) | (1<<CS22) | (1<<CS21) | (1<<CS20);
+	OCR2 = 255;
+
+	modplayer_init();
 
 	sei();
 	
-	while(1) {	
-	}
+	while(1) { }
 
 }
 
 
-uint16_t samples_until_next_frame = SAMPLES_PER_FRAME;
+ISR (TIMER1_COMPA_vect) {	
+	paula_render();	
+}
 
-/**
- *
- */
-ISR (TIMER2_OVF_vect) {	
-	TCNT2 = 255 - (SYSCLK / 8 / SAMPLERATE);	
-	OCR0 = paula_render() + 128;
 
-	if (samples_until_next_frame > 0) {
-		samples_until_next_frame--;
-	} else {
-		samples_until_next_frame = SAMPLES_PER_FRAME;	
-		next_frame();
-	}
+ISR (TIMER2_COMP_vect) {	
+	modplayer_next_frame();
 }
 
 

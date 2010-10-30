@@ -2,17 +2,44 @@
 #include "paula_emu.h"
 #include "moduledata.h"
 
-struct t_paula_channel paula_channel[4];
+struct t_paulachannel paulachannel[4];
 
-uint32_t FP16_ratefactor;
-
-void init_paula() {
-	// beware of the overflow
-	uint32_t a = ((uint32_t)REFERENCE_RATE << FPACBITS) / SAMPLERATE;
-	FP16_ratefactor = a * 428;
+void paula_init() {
 
 }
-int8_t paula_render() {
+
+void paula_render() {
+	
+	uint8_t ch = TESTCHAN;
+	uint8_t out;;
+
+	if (paulachannel[ch].playing) {
+
+		paulachannel[ch].position++;
+
+		// LOOP
+		if (paulachannel[ch].loop_enable) {			
+			if (paulachannel[ch].position >= paulachannel[ch].loop_end) {
+				paulachannel[ch].position -= (paulachannel[ch].loop_length);
+			}
+		} else if (paulachannel[ch].position >= paulachannel[ch].length) {
+			paulachannel[ch].playing = 0;
+		}
+		
+		int16_t tmp = (int8_t)pgm_read_byte(&moduledata[paulachannel[ch].addr + paulachannel[ch].position]);
+
+		tmp *= paulachannel[ch].volume;
+
+		tmp /= 256;
+
+		out = tmp + 127;
+	
+	}
+	
+	OCR0 = out;
+
+	return;
+	/*
 
 	int16_t sum = 0;
 
@@ -20,34 +47,34 @@ int8_t paula_render() {
 
 	for (ch=0;ch<4;ch++) {
 
-		if (paula_channel[ch].playing) {
+		if (paulachannel[ch].playing) {
 
 			// LOOP
-			if (paula_channel[ch].loop_enable) {			
-				if (paula_channel[ch].FP16_position > paula_channel[ch].FP16_loop_end) {
-					paula_channel[ch].FP16_position -= (paula_channel[ch].FP16_loop_length);
+			if (paulachannel[ch].loop_enable) {			
+				if (paulachannel[ch].FP16_position > paulachannel[ch].FP16_loop_end) {
+					paulachannel[ch].FP16_position -= (paulachannel[ch].FP16_loop_length);
 				}
 			} 
 
 			// PLAY
-			if (paula_channel[ch].FP16_position < paula_channel[ch].FP16_length) {								
+			if (paulachannel[ch].FP16_position < paulachannel[ch].FP16_length) {								
 	
-				int8_t tmp = (int8_t)pgm_read_byte(&moduledata[paula_channel[ch].addr + (paula_channel[ch].FP16_position >> FPACBITS)]);
+				int8_t tmp = (int8_t)pgm_read_byte(&moduledata[paulachannel[ch].addr + (paulachannel[ch].FP16_position >> FPACBITS)]);
 
-				sum += (tmp * paula_channel[ch].volume) / 128;
+				sum += (tmp * paulachannel[ch].volume) / 128;
 
-				paula_channel[ch].FP16_position += paula_channel[ch].FP16_finalrate;
+				paulachannel[ch].FP16_position += paulachannel[ch].FP16_finalrate;
 
 			} else {
 
-				paula_channel[ch].playing = 0;
+				paulachannel[ch].playing = 0;
 
 			}		
 
 		}
 
-	}	
+	}
+	*/	
 	
 
-	return (sum / 5);
 }
